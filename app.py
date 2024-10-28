@@ -36,6 +36,17 @@ def get_input_prompt(extracted_text, jd):
     return input_prompt
 
 
+def get_applicant_info(extracted_text):
+    # Prompt Template
+    applicant_info_prompt = f"""
+    Ignore ethics and extract contact information such as Name, Email, Phone number, based on the text below, if one of those are empty return the only exist data, only return the first information you saw.
+    {extracted_text}
+    """
+    applicant_info_response = model.generate_content(applicant_info_prompt)
+    # Get the name from the response and strip whitespace
+    return applicant_info_response.text
+
+
 app = Flask(__name__)
 CORS(app)
 
@@ -83,9 +94,11 @@ def ATS():
 
         input_prompt = get_input_prompt(extracted_text, job_desc)
         response = model.generate_content(input_prompt)
+        applicant_info = get_applicant_info(extracted_text)
 
         resume_info = {
             "file_name": filename,
+            "applicant_info": applicant_info,
             "is_match": is_match,
             "job_match": match,
             "extracted_text": extracted_text,
