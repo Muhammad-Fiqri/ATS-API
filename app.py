@@ -5,14 +5,13 @@ import PyPDF2 as pdf
 from dotenv import load_dotenv
 import google.generativeai as genai
 import numpy
-import pandas as pd
-from pprint import pprint
+import PyPDF2 as pdf
 
 load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-pro')
 
-def get_input_prompt(extract_text,jd):
+def get_input_prompt(extracted_text,jd):
     #Prompt Template
     input_prompt= f"""
     You are a skilled and very experienced ATS(Application Tracking System) with a deep understanding of tech field, software engineering,
@@ -44,22 +43,60 @@ def welcome():
 
 @app.route("/ATS", methods=["POST"])
 def ATS():
-    fileList = request.files.getlist("resumeFiles[]")
+    client_name = request.form["clientName"]
+    job_desc = request.form["jobDesc"]
 
+    fileList = request.files.getlist("resumeFiles[]")
+    resume_list = []
     for i in fileList:
         print(i)
         filename = i.filename
         i.save('uploads/' + filename)
 
-    client_name = request.form["clientName"]
-    job_desc = request.form["jobDesc"]
+        reader=pdf.PdfReader(i)
+        extracted_text=""
+
+        for page in range(len(reader.pages)):
+            page=reader.pages[page]
+            extracted_text+=str(page.extract_text())
+        
+        text_array = [extracted_text,job_desc]
+
+        from sklearn.feature_extraction.text import CountVectorizer
+        cv = CountVectorizer()
+        count_matrix = cv.fit_transform(text_array)
+
+        from sklearn.metrics.pairwise import cosine_similarity
+        match = cosine_similarity(count_matrix)[0][1]
+        match *= 100
+        match = round(match,2)
+        
+        is_match = False
+        if match < 70:
+            is_match = False
+        else:
+            is_match = True
+        
+        input_prompt = get_input_prompt(extracted_text,job_desc)
+        response = model.generate_content(input_prompt)
+
+        resume_info = {
+            "file_name" : filename,
+            "is_match" : is_match,
+            "job_match" : match,
+            "extracted_text" : extracted_text,
+            "response_from_ATS" : response.text
+        }
+        
+        resume_list.append(resume_info)
     
     return_data = {
         "clientName" : client_name,
-        "jobDesc" : job_desc
+        "jobDesc" : job_desc,
+        "resumeProcessed" : resume_list
     }
 
-    return client_name + job_desc
+    return jsonify(return_data)
 
 
 if __name__ == '__main__':
