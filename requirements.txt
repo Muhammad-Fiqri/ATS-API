@@ -1,0 +1,9 @@
+PyPDF2
+google.generativeai
+python-dotenv
+scikit-learn
+numpy
+pandas
+flask
+flask-cors
+pprint
