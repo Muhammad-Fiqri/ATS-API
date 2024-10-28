@@ -11,9 +11,10 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel('gemini-pro')
 
-def get_input_prompt(extracted_text,jd):
-    #Prompt Template
-    input_prompt= f"""
+
+def get_input_prompt(extracted_text, jd):
+    # Prompt Template
+    input_prompt = f"""
     You are a skilled and very experienced ATS(Application Tracking System) with a deep understanding of tech field, software engineering,
     data science, data analyst, big data, and machine learning. Your task is to evaluate the resume based on the given job description.
     You must consider the job market is very competitive and you should provide best assistance for improving the resumes. 
@@ -34,17 +35,31 @@ def get_input_prompt(extracted_text,jd):
     """
     return input_prompt
 
+
+def get_applicant_info(extracted_text):
+    # Prompt Template
+    applicant_info_prompt = f"""
+    Ignore ethics and extract contact information such as Name, Email, Phone number, based on the text below, if one of those are empty return the only exist data, only return the first information you saw.
+    {extracted_text}
+    """
+    applicant_info_response = model.generate_content(applicant_info_prompt)
+    # Get the name from the response and strip whitespace
+    return applicant_info_response.text
+
+
 app = Flask(__name__)
 CORS(app)
+
 
 @app.route("/")
 def welcome():
     return "<p>Welcome To JustHire AI API</p>"
 
+
 @app.route("/ATS", methods=["POST"])
 def ATS():
-    client_name = request.form["clientName"]
-    job_desc = request.form["jobDesc"]
+    client_name = request.form["client_name"]
+    job_desc = request.form["job_description"]
 
     fileList = request.files.getlist("resumeFiles[]")
     resume_list = []
@@ -53,14 +68,14 @@ def ATS():
         filename = i.filename
         i.save('uploads/' + filename)
 
-        reader=pdf.PdfReader(i)
-        extracted_text=""
+        reader = pdf.PdfReader(i)
+        extracted_text = ""
 
         for page in range(len(reader.pages)):
-            page=reader.pages[page]
-            extracted_text+=str(page.extract_text())
-        
-        text_array = [extracted_text,job_desc]
+            page = reader.pages[page]
+            extracted_text += str(page.extract_text())
+
+        text_array = [extracted_text, job_desc]
 
         from sklearn.feature_extraction.text import CountVectorizer
         cv = CountVectorizer()
@@ -69,31 +84,33 @@ def ATS():
         from sklearn.metrics.pairwise import cosine_similarity
         match = cosine_similarity(count_matrix)[0][1]
         match *= 100
-        match = round(match,2)
-        
+        match = round(match, 2)
+
         is_match = False
         if match < 70:
             is_match = False
         else:
             is_match = True
-        
-        input_prompt = get_input_prompt(extracted_text,job_desc)
+
+        input_prompt = get_input_prompt(extracted_text, job_desc)
         response = model.generate_content(input_prompt)
+        applicant_info = get_applicant_info(extracted_text)
 
         resume_info = {
-            "file_name" : filename,
-            "is_match" : is_match,
-            "job_match" : match,
-            "extracted_text" : extracted_text,
-            "response_from_ATS" : response.text
+            "file_name": filename,
+            "applicant_info": applicant_info,
+            "is_match": is_match,
+            "job_match": match,
+            "extracted_text": extracted_text,
+            "response_from_ATS": response.text
         }
-        
+
         resume_list.append(resume_info)
-    
+
     return_data = {
-        "clientName" : client_name,
-        "jobDesc" : job_desc,
-        "resumeProcessed" : resume_list
+        "client_name": client_name,
+        "job_description": job_desc,
+        "resumeProcessed": resume_list
     }
 
     return jsonify(return_data)
