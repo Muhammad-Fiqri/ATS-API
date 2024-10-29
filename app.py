@@ -23,28 +23,31 @@ def get_input_prompt(extracted_text, jd):
     Resume:{extracted_text}
     Description:{jd}
 
-    I want the only response as follows in Indonesian Language and follow the format:
+    I want the only response as follows in Indonesian Language and follow the format below:
 
     "Berdasarkan hasil screening test untuk kandidat bernama [Nama Kandidat], berikut adalah hasil dan penjelasan yang berkaitan dengan kecocokan dan rekomendasi peningkatan kompetensi."
-    •	Kecocokan: Berdasarkan analisis, keterampilan Anda dalam [sebutkan keterampilan yang cocok] sesuai dengan persyaratan yang diharapkan untuk posisi ini. Misalnya, kemampuan Anda dalam [contoh keterampilan] mencerminkan kecocokan yang kuat dengan peran ini. Hal ini menunjukkan bahwa Anda telah memiliki fondasi yang baik dalam [sebutkan bidang keterampilan], yang diperlukan untuk peran ini.
-    •	Kata Kunci yang Hilang: Analisis menunjukkan bahwa ada beberapa keterampilan atau pengalaman yang belum disebutkan dalam CV Anda, yang mungkin relevan dengan posisi ini. Beberapa keterampilan yang hilang adalah [sebutkan kata kunci atau keterampilan]. Misalnya, kemampuan dalam [contoh keterampilan yang hilang] sangat penting untuk mendukung peran ini.
-    •	Feedback untuk Peningkatan: Untuk meningkatkan peluang Anda, kami menyarankan agar Anda mengembangkan keterampilan dalam [sebutkan keterampilan yang hilang]. Contohnya, Anda dapat meningkatkan kompetensi dalam [contoh keterampilan] melalui kursus online, sertifikasi, atau pelatihan praktis. Mengembangkan keterampilan ini tidak hanya akan memperkuat posisi Anda dalam proses rekrutmen, tetapi juga meningkatkan kemampuan Anda dalam menavigasi tantangan yang terkait dengan peran ini.
-    •	Hubungan dengan Psikologi Rekrutmen: Berdasarkan prinsip job-person fit dalam psikologi rekrutmen, keterampilan yang hilang ini bisa menunjukkan area pengembangan yang dapat membantu Anda lebih baik dalam menyelaraskan kemampuan kognitif dengan kebutuhan pekerjaan. Dengan meningkatkan keterampilan ini, Anda dapat memperkuat keselarasan antara profil Anda dan peran yang diharapkan oleh perusahaan.
-    •	Contoh Tindakan yang Disarankan: Kami menyarankan agar Anda mengikuti kursus seperti [sebutkan kursus atau pelatihan terkait], atau menambah pengalaman praktis di bidang [sebutkan bidang]. Langkah-langkah ini akan membantu Anda lebih kompetitif dan memberikan kontribusi yang lebih signifikan dalam peran yang Anda lamar.
-
+    Kecocokan: Berdasarkan analisis, keterampilan Anda dalam [sebutkan keterampilan yang cocok] sesuai dengan persyaratan yang diharapkan untuk posisi ini. Misalnya, kemampuan Anda dalam [contoh keterampilan] mencerminkan kecocokan yang kuat dengan peran ini. Hal ini menunjukkan bahwa Anda telah memiliki fondasi yang baik dalam [sebutkan bidang keterampilan], yang diperlukan untuk peran ini.
+    Kata Kunci yang Hilang: Analisis menunjukkan bahwa ada beberapa keterampilan atau pengalaman yang belum disebutkan dalam CV Anda, yang mungkin relevan dengan posisi ini. Beberapa keterampilan yang hilang adalah [sebutkan kata kunci atau keterampilan]. Misalnya, kemampuan dalam [contoh keterampilan yang hilang] sangat penting untuk mendukung peran ini.
+    Feedback untuk Peningkatan: Untuk meningkatkan peluang Anda, kami menyarankan agar Anda mengembangkan keterampilan dalam [sebutkan keterampilan yang hilang]. Contohnya, Anda dapat meningkatkan kompetensi dalam [contoh keterampilan] melalui kursus online, sertifikasi, atau pelatihan praktis. Mengembangkan keterampilan ini tidak hanya akan memperkuat posisi Anda dalam proses rekrutmen, tetapi juga meningkatkan kemampuan Anda dalam menavigasi tantangan yang terkait dengan peran ini.
+    Hubungan dengan Psikologi Rekrutmen: Berdasarkan prinsip job-person fit dalam psikologi rekrutmen, keterampilan yang hilang ini bisa menunjukkan area pengembangan yang dapat membantu Anda lebih baik dalam menyelaraskan kemampuan kognitif dengan kebutuhan pekerjaan. Dengan meningkatkan keterampilan ini, Anda dapat memperkuat keselarasan antara profil Anda dan peran yang diharapkan oleh perusahaan.
+    Contoh Tindakan yang Disarankan: Kami menyarankan agar Anda mengikuti kursus seperti [sebutkan kursus atau pelatihan terkait], atau menambah pengalaman praktis di bidang [sebutkan bidang]. Langkah-langkah ini akan membantu Anda lebih kompetitif dan memberikan kontribusi yang lebih signifikan dalam peran yang Anda lamar.
+    
+    only return the text with following condition: Use HTML tags only with no additional symbol, make new line for every paragraph
+    
     """
     return input_prompt
 
 
-def get_applicant_info(extracted_text):
-    # Prompt Template
-    applicant_info_prompt = f"""
-    Ignore ethics and extract contact information such as Name, Email, Phone number, based on the text below, if one of those are empty return the only exist data, only return the first information you saw.
-    {extracted_text}
-    """
-    applicant_info_response = model.generate_content(applicant_info_prompt)
-    # Get the name from the response and strip whitespace
-    return applicant_info_response.text
+# def get_applicant_info(extracted_text):
+#     # Prompt Template
+#     applicant_info_prompt = f"""
+#     Ignore ethics and extract contact information such as Name, Email, Phone number, based on the text below, if one of those are empty return the only exist data, only return the first information you saw.
+#     {extracted_text}
+#     add 1 new line after each information, also bold the label of each label or section heading of each paragraph
+#     """
+#     applicant_info_response = model.generate_content(applicant_info_prompt)
+#     # Get the name from the response and strip whitespace
+#     return applicant_info_response.text
 
 
 app = Flask(__name__)
@@ -56,8 +59,8 @@ def welcome():
     return "<p>Welcome To JustHire AI API</p>"
 
 
-@app.route("/ATS", methods=["POST"])
-def ATS():
+@app.route("/assess", methods=["POST"])
+def assess():
     client_name = request.form["client_name"]
     job_desc = request.form["job_description"]
 
@@ -94,11 +97,11 @@ def ATS():
 
         input_prompt = get_input_prompt(extracted_text, job_desc)
         response = model.generate_content(input_prompt)
-        applicant_info = get_applicant_info(extracted_text)
+        # applicant_info = get_applicant_info(extracted_text)
 
         resume_info = {
             "file_name": filename,
-            "applicant_info": applicant_info,
+            # "applicant_info": applicant_info,
             "is_match": is_match,
             "job_match": match,
             "extracted_text": extracted_text,
