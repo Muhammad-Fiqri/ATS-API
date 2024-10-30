@@ -61,54 +61,60 @@ def welcome():
 
 @app.route("/assess", methods=["POST"])
 def assess():
-    client_name = request.form["client_name"]
-    job_desc = request.form["job_description"]
+    client_name = request.form["clientName"]
+    job_desc = request.form["jobDesc"]
 
-    fileList = request.files.getlist("resumeFiles[]")
+    fileList = request.files.getlist("resumeFiles")
     resume_list = []
-    for i in fileList:
-        print(i)
-        filename = i.filename
-        i.save('uploads/' + filename)
 
-        reader = pdf.PdfReader(i)
-        extracted_text = ""
+    if len(fileList) > 0:
+        for i in fileList:
+            filename = i.filename
+            if filename.endswith('.pdf'):
+                i.save('uploads/' + filename)
 
-        for page in range(len(reader.pages)):
-            page = reader.pages[page]
-            extracted_text += str(page.extract_text())
+                reader = pdf.PdfReader(i)
+                extracted_text = ""
 
-        text_array = [extracted_text, job_desc]
+                for page in range(len(reader.pages)):
+                    page = reader.pages[page]
+                    extracted_text += str(page.extract_text())
 
-        from sklearn.feature_extraction.text import CountVectorizer
-        cv = CountVectorizer()
-        count_matrix = cv.fit_transform(text_array)
+                text_array = [extracted_text, job_desc]
 
-        from sklearn.metrics.pairwise import cosine_similarity
-        match = cosine_similarity(count_matrix)[0][1]
-        match *= 100
-        match = round(match, 2)
+                from sklearn.feature_extraction.text import CountVectorizer
+                cv = CountVectorizer()
+                count_matrix = cv.fit_transform(text_array)
 
-        is_match = False
-        if match < 70:
-            is_match = False
-        else:
-            is_match = True
+                from sklearn.metrics.pairwise import cosine_similarity
+                match = cosine_similarity(count_matrix)[0][1]
+                match *= 100
+                match = round(match, 2)
 
-        input_prompt = get_input_prompt(extracted_text, job_desc)
-        response = model.generate_content(input_prompt)
-        # applicant_info = get_applicant_info(extracted_text)
+                is_match = False
+                if match < 70:
+                    is_match = False
+                else:
+                    is_match = True
 
-        resume_info = {
-            "file_name": filename,
-            # "applicant_info": applicant_info,
-            "is_match": is_match,
-            "job_match": match,
-            "extracted_text": extracted_text,
-            "response_from_ATS": response.text
-        }
+                input_prompt = get_input_prompt(extracted_text, job_desc)
+                response = model.generate_content(input_prompt)
+                # applicant_info = get_applicant_info(extracted_text)
 
-        resume_list.append(resume_info)
+                resume_info = {
+                    "file_name": filename,
+                    # "applicant_info": applicant_info,
+                    "is_match": is_match,
+                    "job_match": match,
+                    "extracted_text": extracted_text,
+                    "response_from_ATS": response.text
+                }
+
+                resume_list.append(resume_info)
+            else:
+                return "File Type Is Not PDF"
+    else:
+        return "No Files"
 
     return_data = {
         "client_name": client_name,
