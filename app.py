@@ -70,7 +70,7 @@ def assess():
     if len(fileList) > 0:
         for i in fileList:
             filename = i.filename
-            if filename.endswith('.pdf'):
+            if filename.endswith('.pdf') or filename.endswith('.docx') or filename.endswith('.txt'):
                 i.save('uploads/' + filename)
 
                 reader = pdf.PdfReader(i)
