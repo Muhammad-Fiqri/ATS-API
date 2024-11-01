@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, url_for, send_from_directory
 from flask_cors import CORS
 import os
 import PyPDF2 as pdf
@@ -53,6 +53,15 @@ def get_input_prompt(extracted_text, jd):
 app = Flask(__name__)
 CORS(app)
 
+# Define the uploads directory
+UPLOAD_FOLDER = 'uploads'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Ensure the folder exists
+
+
+@app.route('/uploads/<path:filename>')
+def download_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
 
 @app.route("/")
 def welcome():
@@ -66,6 +75,8 @@ def assess():
 
     fileList = request.files.getlist("resumeFiles[]")
     resume_list = []
+    resume_id = 1
+
     for i in fileList:
         print(i)
         filename = i.filename
@@ -90,7 +101,7 @@ def assess():
         match = round(match, 2)
 
         is_match = False
-        if match < 70:
+        if match < 50:
             is_match = False
         else:
             is_match = True
@@ -99,8 +110,13 @@ def assess():
         response = model.generate_content(input_prompt)
         # applicant_info = get_applicant_info(extracted_text)
 
+        resume_link = url_for(
+            'download_file', filename=filename, _external=True)
+
         resume_info = {
+            "id": resume_id,
             "file_name": filename,
+            "resume_link": resume_link,
             # "applicant_info": applicant_info,
             "is_match": is_match,
             "job_match": match,
@@ -109,6 +125,7 @@ def assess():
         }
 
         resume_list.append(resume_info)
+        resume_id += 1  # Increment the ID for the next resume
 
     return_data = {
         "client_name": client_name,
