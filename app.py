@@ -23,7 +23,7 @@ def get_input_prompt(extracted_text, jd):
     Resume:{extracted_text}
     Description:{jd}
 
-    I want the only response as follows in Indonesian Language and follow the format below:
+     I want the only response as follows in Indonesian Language and follow the format below:
 
     "Berdasarkan hasil screening test untuk kandidat bernama [Nama Kandidat], berikut adalah hasil dan penjelasan yang berkaitan dengan kecocokan dan rekomendasi peningkatan kompetensi."
     Kecocokan: Berdasarkan analisis, keterampilan Anda dalam [sebutkan keterampilan yang cocok] sesuai dengan persyaratan yang diharapkan untuk posisi ini. Misalnya, kemampuan Anda dalam [contoh keterampilan] mencerminkan kecocokan yang kuat dengan peran ini. Hal ini menunjukkan bahwa Anda telah memiliki fondasi yang baik dalam [sebutkan bidang keterampilan], yang diperlukan untuk peran ini.
@@ -70,62 +70,68 @@ def welcome():
 
 @app.route("/assess", methods=["POST"])
 def assess():
-    client_name = request.form["client_name"]
-    job_desc = request.form["job_description"]
+    client_name = request.form["clientName"]
+    job_desc = request.form["jobDesc"]
 
-    fileList = request.files.getlist("resumeFiles[]")
+    fileList = request.files.getlist("resumeFiles")
     resume_list = []
     resume_id = 1
 
-    for i in fileList:
-        print(i)
-        filename = i.filename
-        i.save('uploads/' + filename)
+    if len(fileList) > 0:
+        for i in fileList:
+            filename = i.filename
+            if filename.endswith('.pdf') or filename.endswith('.docx') or filename.endswith('.txt'):
+                i.save('uploads/' + filename)
 
-        reader = pdf.PdfReader(i)
-        extracted_text = ""
+                reader = pdf.PdfReader(i)
+                extracted_text = ""
 
-        for page in range(len(reader.pages)):
-            page = reader.pages[page]
-            extracted_text += str(page.extract_text())
+                for page in range(len(reader.pages)):
+                    page = reader.pages[page]
+                    extracted_text += str(page.extract_text())
 
-        text_array = [extracted_text, job_desc]
+                text_array = [extracted_text, job_desc]
 
-        from sklearn.feature_extraction.text import CountVectorizer
-        cv = CountVectorizer()
-        count_matrix = cv.fit_transform(text_array)
+                from sklearn.feature_extraction.text import CountVectorizer
+                cv = CountVectorizer()
+                count_matrix = cv.fit_transform(text_array)
 
-        from sklearn.metrics.pairwise import cosine_similarity
-        match = cosine_similarity(count_matrix)[0][1]
-        match *= 100
-        match = round(match, 2)
+                from sklearn.metrics.pairwise import cosine_similarity
+                match = cosine_similarity(count_matrix)[0][1]
+                match *= 100
+                match = round(match, 2)
 
-        is_match = False
-        if match < 50:
-            is_match = False
-        else:
-            is_match = True
+                is_match = False
+                if match < 50:
+                    is_match = False
+                else:
+                    is_match = True
 
-        input_prompt = get_input_prompt(extracted_text, job_desc)
-        response = model.generate_content(input_prompt)
-        # applicant_info = get_applicant_info(extracted_text)
+                input_prompt = get_input_prompt(extracted_text, job_desc)
+                response = model.generate_content(input_prompt)
+                # applicant_info = get_applicant_info(extracted_text)
 
-        resume_link = url_for(
-            'download_file', filename=filename, _external=True)
+                resume_link = url_for(
+                    'download_file', filename=filename, _external=True)
 
-        resume_info = {
-            "id": resume_id,
-            "file_name": filename,
-            "resume_link": resume_link,
-            # "applicant_info": applicant_info,
-            "is_match": is_match,
-            "job_match": match,
-            "extracted_text": extracted_text,
-            "response_from_ATS": response.text
-        }
+                resume_info = {
+                    "id": resume_id,
+                    "file_name": filename,
+                    # "applicant_info": applicant_info,
+                    "resume_link": resume_link,
+                    "is_match": is_match,
+                    "job_match": match,
+                    "extracted_text": extracted_text,
+                    "response_from_ATS": response.text
+                }
 
-        resume_list.append(resume_info)
-        resume_id += 1  # Increment the ID for the next resume
+                resume_list.append(resume_info)
+                resume_id += 1
+
+            else:
+                return "File Type Is Not PDF"
+    else:
+        return "No Files"
 
     return_data = {
         "client_name": client_name,
