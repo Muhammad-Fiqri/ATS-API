@@ -19,7 +19,7 @@ def get_input_prompt(extracted_text, jd):
     input_prompt = f"""
     You are a skilled and very experienced ATS(Application Tracking System) with a deep understanding of tech field, software engineering,
     data science, data analyst, big data, and machine learning. Your task is to evaluate the resume based on the given job description.
-    You must consider the job market is very competitive and you should provide best assistance for improving the resumes. 
+    You must consider the job market is very competitive and you should provide best assistance for improving the resumes.
     Assign the percentage Matching based on Job description and the missing keywords with high accuracy and anti-fraud feature where it can detect word spam in resume to match the vectorizer cosine similarity AI algorithm.
 
     Resume:{extracted_text}
@@ -33,9 +33,9 @@ def get_input_prompt(extracted_text, jd):
     Feedback untuk Peningkatan: Untuk meningkatkan peluang Anda, kami menyarankan agar Anda mengembangkan keterampilan dalam [sebutkan keterampilan yang hilang]. Contohnya, Anda dapat meningkatkan kompetensi dalam [contoh keterampilan] melalui kursus online, sertifikasi, atau pelatihan praktis. Mengembangkan keterampilan ini tidak hanya akan memperkuat posisi Anda dalam proses rekrutmen, tetapi juga meningkatkan kemampuan Anda dalam menavigasi tantangan yang terkait dengan peran ini.
     Hubungan dengan Psikologi Rekrutmen: Berdasarkan prinsip job-person fit dalam psikologi rekrutmen, keterampilan yang hilang ini bisa menunjukkan area pengembangan yang dapat membantu Anda lebih baik dalam menyelaraskan kemampuan kognitif dengan kebutuhan pekerjaan. Dengan meningkatkan keterampilan ini, Anda dapat memperkuat keselarasan antara profil Anda dan peran yang diharapkan oleh perusahaan.
     Contoh Tindakan yang Disarankan: Kami menyarankan agar Anda mengikuti kursus seperti [sebutkan kursus atau pelatihan terkait], atau menambah pengalaman praktis di bidang [sebutkan bidang]. Langkah-langkah ini akan membantu Anda lebih kompetitif dan memberikan kontribusi yang lebih signifikan dalam peran yang Anda lamar.
-    
+
     only return the text with following condition: Use HTML tags only with no additional symbol, make new line for every paragraph
-    
+
     """
     return input_prompt
 
@@ -45,7 +45,7 @@ def get_word_cloud(extracted_text, jd):
     word_cloud_prompt = f"""
     You are a skilled and very experienced ATS(Application Tracking System) with a deep understanding of tech field, software engineering,
     data science, data analyst, big data, and machine learning. Your task is to evaluate the resume based on the given job description.
-    You must consider the job market is very competitive and you should provide best assistance for improving the resumes. 
+    You must consider the job market is very competitive and you should provide best assistance for improving the resumes.
     Assign the percentage Matching based on Job description and the missing keywords with high accuracy and anti-fraud feature where it can detect word spam in resume to match the vectorizer cosine similarity AI algorithm.
 
     Resume:{extracted_text}
@@ -55,7 +55,7 @@ def get_word_cloud(extracted_text, jd):
     the most strongest word for the candidate
 
     return the result separated by comma ,
-    
+
     """
     return word_cloud_prompt
 
@@ -119,64 +119,71 @@ def assess():
     resume_list = []
     resume_id = 1
 
-    for i in fileList:
-        print(i)
-        filename = i.filename
-        i.save('uploads/' + filename)
+    if len(fileList) > 0:
+        for i in fileList:
+            print(i)
+            filename = i.filename
+            if filename.endswith('.pdf'):
+                i.save('uploads/' + filename)
 
-        reader = pdf.PdfReader(i)
-        extracted_text = ""
+                reader = pdf.PdfReader(i)
+                extracted_text = ""
 
-        for page in range(len(reader.pages)):
-            page = reader.pages[page]
-            extracted_text += str(page.extract_text())
+                for page in range(len(reader.pages)):
+                    page = reader.pages[page]
+                    extracted_text += str(page.extract_text())
 
-        text_array = [extracted_text, job_desc]
+                text_array = [extracted_text, job_desc]
 
-        cv = CountVectorizer()
-        count_matrix = cv.fit_transform(text_array)
+                cv = CountVectorizer()
+                count_matrix = cv.fit_transform(text_array)
 
-        match = cosine_similarity(count_matrix)[0][1]
-        match *= 100
-        match = round(match, 2)
+                match = cosine_similarity(count_matrix)[0][1]
+                match *= 100
+                match = round(match, 2)
 
-        is_match = False
-        if match < 50:
-            is_match = False
-        else:
-            is_match = True
+                is_match = False
+                if match < 50:
+                    is_match = False
+                else:
+                    is_match = True
 
-        input_prompt = get_input_prompt(extracted_text, job_desc)
-        response = model.generate_content(input_prompt)
-        word_cloud = get_word_cloud(extracted_text, job_desc)
-        keySkills = model.generate_content(word_cloud)
-        # applicant_info = get_applicant_info(extracted_text)
+                input_prompt = get_input_prompt(extracted_text, job_desc)
+                response = model.generate_content(input_prompt)
+                word_cloud = get_word_cloud(extracted_text, job_desc)
+                keySkills = model.generate_content(word_cloud)
+                # applicant_info = get_applicant_info(extracted_text)
 
-        resume_link = url_for(
-            'download_file', filename=filename, _external=True)
+                resume_link = url_for(
+                    'download_file', filename=filename, _external=True)
 
-        resume_info = {
-            "id": resume_id,
-            "file_name": filename,
-            "resume_link": resume_link,
-            # "applicant_info": applicant_info,
-            "is_match": is_match,
-            "job_match": match,
-            "extracted_text": extracted_text,
-            "response_from_ATS": response.text,
-            "keySkills": keySkills.text
-        }
+                resume_info = {
+                    "id": resume_id,
+                    "file_name": filename,
+                    "resume_link": resume_link,
+                    # "applicant_info": applicant_info,
+                    "is_match": is_match,
+                    "job_match": match,
+                    "extracted_text": extracted_text,
+                    "response_from_ATS": response.text,
+                    "keySkills": keySkills.text
+                }
 
-        resume_list.append(resume_info)
-        resume_id += 1  # Increment the ID for the next resume
+                resume_list.append(resume_info)
+                resume_id += 1  # Increment the ID for the next resume
 
-    return_data = {
-        "client_name": client_name,
-        "job_description": job_desc,
-        "resumeProcessed": resume_list
-    }
+            else:
+                return "File Type Is Not PDF"
 
-    return jsonify(return_data)
+            return_data = {
+                "client_name": client_name,
+                "job_description": job_desc,
+                "resumeProcessed": resume_list
+            }
+
+            return jsonify(return_data)
+    else:
+        return "No Files"
 
 
 if __name__ == '__main__':
