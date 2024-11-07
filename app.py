@@ -180,8 +180,8 @@ def assess():
                 "job_description": job_desc,
                 "resumeProcessed": resume_list
             }
-
-            return jsonify(return_data)
+        
+        return jsonify(return_data)
     else:
         return "No Files"
 
