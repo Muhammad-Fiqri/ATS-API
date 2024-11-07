@@ -175,11 +175,11 @@ def assess():
             else:
                 return "File Type Is Not PDF"
 
-            return_data = {
-                "client_name": client_name,
-                "job_description": job_desc,
-                "resumeProcessed": resume_list
-            }
+        return_data = {
+            "client_name": client_name,
+            "job_description": job_desc,
+            "resumeProcessed": resume_list
+        }
         
         return jsonify(return_data)
     else:
