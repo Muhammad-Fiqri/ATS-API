@@ -80,6 +80,10 @@ UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Ensure the folder exists
 
 
+# Dictionary to hold resume data accessible by resume_id
+resume_data_store = {}
+
+
 @app.route('/uploads/<path:filename>')
 def download_file(filename):
     return send_from_directory(UPLOAD_FOLDER, filename)
@@ -94,7 +98,12 @@ def welcome():
 def chat():
     data = request.get_json()
     user_message = data.get("message")
-    context = data.get("context")
+
+    # Compile context from all resume data in resume_data_store
+    context = "\n\n".join(
+        f"Resume ID: {resume_id}\nJob Match: {data['job_match']}%\nExtracted Text: {data['extracted_text']}"
+        for resume_id, data in resume_data_store.items()
+    )
 
     # Generate a prompt to send to the Gemini model
     chat_prompt = f"""
@@ -169,18 +178,24 @@ def assess():
                     "keySkills": keySkills.text
                 }
 
+                # Save each resume's job_match and extracted_text to the global dictionary by resume_id
+                resume_data_store[resume_id] = {
+                    "job_match": match,
+                    "extracted_text": extracted_text
+                }
+
                 resume_list.append(resume_info)
                 resume_id += 1  # Increment the ID for the next resume
 
             else:
                 return "File Type Is Not PDF"
 
-        return_data = {
-            "client_name": client_name,
-            "job_description": job_desc,
-            "resumeProcessed": resume_list
-        }
-        
+            return_data = {
+                "client_name": client_name,
+                "job_description": job_desc,
+                "resumeProcessed": resume_list
+            }
+
         return jsonify(return_data)
     else:
         return "No Files"
